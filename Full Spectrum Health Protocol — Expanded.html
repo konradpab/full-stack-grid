@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Full Spectrum Health Protocol — Expanded</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #08080f; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #08080f; }
+    ::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+    .row-hover { transition: background 0.12s; cursor: pointer; }
+    .row-hover:hover { background: rgba(255,255,255,0.035) !important; }
+    .fpill { transition: all 0.13s; cursor: pointer; border: none; }
+    .fpill:hover { opacity: 0.8; }
+    input:focus { outline: none; border-color: #a78bfa88 !important; }
+    .tab-btn { transition: all 0.13s; cursor: pointer; border: none; }
+    .tab-btn:hover { opacity: 0.8; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+// Evidence tier system:
+// S = Established/Strong RCT (✅)
+// A = Promising/experimental with decent evidence (🧪)
+// B = Early/mixed evidence (🧪 weak)
+// C = Frontier/caution - real risk or very early (⚠️)
+
+const STACK = [
+  // ─── BRAIN STIMULATION ───
+  { id:1,   cluster:"Brain Stimulation",         item:"rTMS / tTMS (Stanford SNS Protocol)",      impact:9, need:"High",     timing:"Clinical course, 5d/week x2wk", phase:"Month 2-3",      tier:"A", status:"🧪", risk:"Low-Med",  note:"80%+ remission in TRD trials. Theta-burst protocol is the key differentiator. Requires clinic — consumer devices are a downgrade." },
+  { id:2,   cluster:"Brain Stimulation",         item:"tDCS (home/clinic)",                        impact:5, need:"Low",      timing:"20-30min sessions",             phase:"Experimental",   tier:"B", status:"⚠️", risk:"Low",      note:"Weak effect sizes in rigorous trials. Some cognitive and mood signal but inconsistent. Protocol standardisation is the main problem." },
+  { id:3,   cluster:"Brain Stimulation",         item:"tACS (transcranial AC stimulation)",        impact:4, need:"Low",      timing:"Research setting",              phase:"Experimental",   tier:"B", status:"⚠️", risk:"Low",      note:"Oscillatory entrainment theory is interesting; replication crisis in the field. Watch-and-wait for now." },
+  { id:4,   cluster:"Brain Stimulation",         item:"Neurofeedback (EEG/fMRI-based)",            impact:6, need:"Medium",   timing:"Weekly sessions x10-20",        phase:"Month 3+",       tier:"A", status:"🧪", risk:"Low",      note:"Best evidence for ADHD and anxiety. Real-time learning of brain state regulation. Time-intensive but durable effects reported." },
+  { id:5,   cluster:"Brain Stimulation",         item:"Vagus Nerve Stimulation (external/auricular)",impact:7, need:"Medium", timing:"Daily, 15-30min",               phase:"Month 2+",       tier:"A", status:"🧪", risk:"Low",      note:"Non-invasive auricular VNS has solid anxiety, HRV, and anti-inflammatory evidence. Gammacore and Truvaga are accessible devices." },
+  { id:6,   cluster:"Brain Stimulation",         item:"Binaural Beats / Entrainment Audio",        impact:3, need:"Low",      timing:"During focus/sleep sessions",   phase:"Optional",       tier:"B", status:"⚠️", risk:"None",     note:"Modest evidence for relaxation and focus. Low risk, low cost — valid as a soft tool but not a primary intervention." },
+
+  // ─── PHARMACOLOGICAL NEUROPLASTICITY ───
+  { id:7,   cluster:"Pharma Neuroplasticity",    item:"SSRIs (neuroplasticity window use)",        impact:7, need:"Medium",   timing:"Clinical decision",             phase:"As prescribed",  tier:"S", status:"✅", risk:"Med",      note:"Beyond mood: SSRIs demonstrably upregulate BDNF and open plasticity windows. Combining with therapy during this window is key." },
+  { id:8,   cluster:"Pharma Neuroplasticity",    item:"Ketamine Therapy (IV or intranasal)",       impact:9, need:"High",     timing:"Series of 6 infusions",         phase:"Month 3-4",      tier:"A", status:"🧪", risk:"Med",      note:"Rapid antidepressant effect via AMPA/BDNF cascade. Best for treatment-resistant cases. Esketamine (Spravato) is FDA-approved." },
+  { id:9,   cluster:"Pharma Neuroplasticity",    item:"Psilocybin-Assisted Therapy",              impact:9, need:"Medium",   timing:"1-3 guided sessions",           phase:"Month 4+",       tier:"A", status:"🧪", risk:"Med",      note:"Strong trial data for depression, anxiety, addiction. Set + setting + integration are non-negotiable. Not a standalone drug effect." },
+  { id:10,  cluster:"Pharma Neuroplasticity",    item:"MDMA-Assisted Therapy (PTSD focus)",       impact:8, need:"Medium",   timing:"2-3 guided sessions",           phase:"Month 4+",       tier:"A", status:"🧪", risk:"Med",      note:"Phase 3 PTSD trials showed dramatic results. FDA decision pending. Most powerful for trauma-layer work alongside EMDR." },
+  { id:11,  cluster:"Pharma Neuroplasticity",    item:"Lithium Microdose (0.3-0.5mg/day)",        impact:6, need:"Low",      timing:"Daily",                         phase:"Experimental",   tier:"B", status:"⚠️", risk:"Low-Med",  note:"Epidemiological neuroprotection signal is striking (lower Alzheimer's in high-lithium water areas). Microdose is not mood stabilisation — different mechanism." },
+  { id:12,  cluster:"Pharma Neuroplasticity",    item:"Memantine (low-dose)",                     impact:5, need:"Low",      timing:"Daily, 5-10mg",                 phase:"Experimental",   tier:"A", status:"🧪", risk:"Low",      note:"NMDA antagonist with neuroprotective and possible cognitive-enhancement signal. Off-label use growing in longevity space." },
+  { id:13,  cluster:"Pharma Neuroplasticity",    item:"Methylphenidate / Modafinil (timed)",      impact:7, need:"High",     timing:"Morning only, no after 1pm",    phase:"Now",            tier:"S", status:"✅", risk:"Low-Med",  note:"Executive function scaffolding. Timing and dose management critical for sleep architecture. Already in your stack — optimise, don't escalate." },
+
+  // ─── BEHAVIORAL PLASTICITY ───
+  { id:14,  cluster:"Behavioral Plasticity",     item:"Deliberate Skill Learning (new domain)",   impact:8, need:"High",     timing:"Daily, 30-60min",               phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Neuroplasticity requires novelty + challenge + repetition. Passive consumption doesn't count. Pick one hard skill and go deep." },
+  { id:15,  cluster:"Behavioral Plasticity",     item:"Language / Travel Novelty Exposure",       impact:6, need:"Medium",   timing:"Ongoing",                       phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Cognitive reserve and allostatic flexibility. Especially powerful combined with social connection in unfamiliar environments." },
+  { id:16,  cluster:"Behavioral Plasticity",     item:"Meditation (Open Monitoring + Focused)",   impact:8, need:"High",     timing:"Daily, 10-20min",               phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Two distinct modes with different neural targets. Focused attention builds concentration; open monitoring builds metacognitive awareness." },
+  { id:17,  cluster:"Behavioral Plasticity",     item:"Journaling + Narrative Reconstruction",    impact:7, need:"Medium",   timing:"3-4x/week, 15min",              phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Pennebaker protocol: expressive writing about difficult experiences reorganises threat response. Distinct from gratitude journaling." },
+  { id:18,  cluster:"Behavioral Plasticity",     item:"EMDR Therapy",                             impact:9, need:"High",     timing:"Weekly sessions",               phase:"Month 1-2",      tier:"S", status:"✅", risk:"Low",      note:"Gold-standard trauma processing. Upstream of sleep, HRV, cortisol dysregulation. Integration layer for all neuro interventions." },
+  { id:19,  cluster:"Behavioral Plasticity",     item:"IFS (Internal Family Systems)",            impact:7, need:"Medium",   timing:"Weekly sessions",               phase:"Month 2+",       tier:"A", status:"🧪", risk:"Low",      note:"Parts-based trauma model. Excellent for complex/developmental trauma where EMDR alone is insufficient. Pairs well with psychedelic prep." },
+  { id:20,  cluster:"Behavioral Plasticity",     item:"Somatic Therapy (SE / somatic tracking)",  impact:7, need:"Medium",   timing:"Weekly sessions",               phase:"Month 2+",       tier:"A", status:"🧪", risk:"Low",      note:"Body-first approach to stored trauma. Particularly useful when talk therapy has plateaued. Peter Levine's Somatic Experiencing model." },
+
+  // ─── EXERCISE & MOVEMENT ───
+  { id:21,  cluster:"Exercise & Movement",       item:"Zone 2 Aerobic Base (row/bike)",           impact:9, need:"High",     timing:"3-4x/week, 20-45min",           phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Mitochondrial density, metabolic flexibility, cardiovascular longevity. The most evidence-dense exercise intervention in the longevity literature." },
+  { id:22,  cluster:"Exercise & Movement",       item:"VO₂ Max Intervals (Zone 4-5)",             impact:8, need:"High",     timing:"1-2x/week, 4x4min",             phase:"Month 1+",       tier:"S", status:"✅", risk:"Low",      note:"Norwegian 4x4 protocol has strongest VO₂max improvement data. High VO₂max is one of the strongest longevity predictors known." },
+  { id:23,  cluster:"Exercise & Movement",       item:"Strength Training (compound / progressive)",impact:9, need:"High",     timing:"2-3x/week",                     phase:"Now",            tier:"S", status:"✅", risk:"Low",      note:"Muscle mass is metabolic and longevity insurance. Deadhang, farmer carry, leg press as simple proxies. Track grip + leg strength quarterly." },
+  { id:24,  cluster:"Exercise & Movement",       item:"Mobility / Fascia Work (targeted)",        impact:7, need:"High",     timing:"Post-workout or post-sauna",    phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Hip flexors, posterior chain, thoracic spine. Best done in thermal window (sauna/post-workout). Not stretching for flexibility — loading range." },
+  { id:25,  cluster:"Exercise & Movement",       item:"Breath Mechanics Retraining",              impact:7, need:"Medium",   timing:"10min daily practice",          phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Dysfunctional breathing patterns (chest-dominant, mouth breathing) create chronic low-grade sympathetic activation. Buteyko and McKeown protocols." },
+  { id:26,  cluster:"Exercise & Movement",       item:"Yoga / Somatic Movement",                  impact:6, need:"Medium",   timing:"2-3x/week",                     phase:"Month 1+",       tier:"A", status:"🧪", risk:"None",     note:"Combines mobility, breathwork, and nervous system regulation. Yin yoga specifically for parasympathetic activation and fascia." },
+  { id:27,  cluster:"Exercise & Movement",       item:"Corrective Posture Training",              impact:6, need:"Medium",   timing:"Embedded in daily routine",     phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Anterior pelvic tilt and forward head posture are epidemic. Direct consequence for knee loading, back pain, breathing mechanics." },
+
+  // ─── HEAT / COLD HORMESIS ───
+  { id:28,  cluster:"Heat & Cold Hormesis",      item:"Sauna 4x/week (80-100°C, 15-20min)",      impact:9, need:"High",     timing:"Post-workout preferred",        phase:"Now",            tier:"A", status:"🧪", risk:"Low",      note:"Finnish cohort: 4x/week correlates with 40% lower CV mortality. Heat shock proteins, BDNF, GH pulse. Stack with mobility in-session." },
+  { id:29,  cluster:"Heat & Cold Hormesis",      item:"Cold Exposure (shower/plunge)",            impact:6, need:"Low",      timing:"Morning, 2-5min at <15°C",     phase:"Month 2+",       tier:"A", status:"🧪", risk:"Low",      note:"Norepinephrine spike (~300%), mood, resilience, brown adipose activation. Time cold away from strength training (blunts adaptation if same session)." },
+  { id:30,  cluster:"Heat & Cold Hormesis",      item:"Cold Face Immersion (vagal activation)",   impact:5, need:"Low",      timing:"Acute stress response use",     phase:"Optional",       tier:"A", status:"🧪", risk:"None",     note:"Diving reflex activates parasympathetic rapidly. Useful for acute anxiety/panic states — faster than breathwork in some individuals." },
+
+  // ─── METABOLIC REGULATION ───
+  { id:31,  cluster:"Metabolic Regulation",      item:"Time-Restricted Eating (16-18h window)",   impact:8, need:"High",     timing:"Daily",                         phase:"Now",            tier:"A", status:"🧪", risk:"Low",      note:"Already in your stack and in the optimal window. Do not extend — protein synthesis and muscle preservation start to compete above 18h." },
+  { id:32,  cluster:"Metabolic Regulation",      item:"CGM-Guided Eating",                        impact:8, need:"Medium",   timing:"Wear 2-4 week cycles",          phase:"Month 1+",       tier:"A", status:"🧪", risk:"None",     note:"Continuous glucose monitor reveals personal glucose response to foods — often surprising. Levels, Supersapiens. One cycle is highly educational even without ongoing use." },
+  { id:33,  cluster:"Metabolic Regulation",      item:"Ketogenic Phases (4-8 week cycles)",       impact:6, need:"Low",      timing:"Targeted cycles",               phase:"Optional",       tier:"A", status:"🧪", risk:"Low-Med",  note:"Metabolic flexibility training. Useful periodically but not as a permanent diet. Protein targets are hard to hit on keto + vegan." },
+  { id:34,  cluster:"Metabolic Regulation",      item:"High Protein + Anti-Inflammatory Diet",    impact:9, need:"Critical",  timing:"Daily structure",               phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"0.7-1g/lb, spread across meals. Vegan default is protective for inflammation. The single highest-leverage dietary intervention." },
+  { id:35,  cluster:"Metabolic Regulation",      item:"Eliminate Ultra-Processed / High GI",      impact:8, need:"High",     timing:"Daily",                         phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Upstream of metabolic syndrome, neuroinflammation, and accelerated aging. Not about perfection — 80% compliance moves the needle hard." },
+
+  // ─── SLEEP ───
+  { id:36,  cluster:"Sleep",                     item:"Consistent Wake Time (anchor)",            impact:10,need:"Critical",  timing:"Same time daily, incl. weekends",phase:"Now",           tier:"S", status:"✅", risk:"None",     note:"Social jet lag of 2h weekend shift = weekly transatlantic flight. The circadian anchor is more powerful than any sleep supplement." },
+  { id:37,  cluster:"Sleep",                     item:"Morning Sunlight Exposure (10-30min)",     impact:8, need:"High",     timing:"Within 1h of waking",           phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Sets circadian phase, cortisol awakening response, serotonin synthesis. Outside without sunglasses. Even overcast sky works (10x indoor light)." },
+  { id:38,  cluster:"Sleep",                     item:"Evening Light Restriction (90min pre-bed)",impact:8, need:"High",     timing:"Evening",                       phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Blue-light suppresses melatonin. Amber glasses are the most compliant fallback. Screen cut-off or dim/warm light mode minimum." },
+  { id:39,  cluster:"Sleep",                     item:"Sleep Temperature (17-19°C room)",         impact:9, need:"High",     timing:"Sleep environment",             phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Core body temperature drop triggers sleep onset. Cool room + warm pre-sleep shower (rebound cooling) is the gold standard combo." },
+  { id:40,  cluster:"Sleep",                     item:"Magnesium Threonate + Glycine (pre-bed)",  impact:9, need:"High",     timing:"30-60min before bed",           phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Best evidence-based sleep supplement stack. Mg threonate for CNS penetration; glycine (3g) for core temperature drop and deep sleep." },
+
+  // ─── CORE SUPPLEMENTS ───
+  { id:41,  cluster:"Supplements — Core",        item:"Creatine (3-5g/day)",                      impact:9, need:"High",     timing:"Daily, any time",               phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Most replicated supplement in sports science + emerging cognitive data. No cycling. Monohydrate is sufficient — ignore marketing." },
+  { id:42,  cluster:"Supplements — Core",        item:"Omega-3 EPA+DHA (2-3g combined)",         impact:9, need:"High",     timing:"With meals",                    phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Anti-inflammatory, CV, cognitive, triglyceride. Most people underdose — check EPA+DHA on label, not 'fish oil' total weight." },
+  { id:43,  cluster:"Supplements — Core",        item:"Vitamin D3 + K2 (test first)",             impact:8, need:"High",     timing:"Morning with fat",              phase:"Now",            tier:"S", status:"✅", risk:"Low",      note:"Deficiency is near-universal and silent. K2 (MK-7 form) routes calcium to bone not arteries. Test 25-OH-D3 — target 60-80ng/mL." },
+  { id:44,  cluster:"Supplements — Core",        item:"Magnesium (Threonate/Glycinate)",          impact:8, need:"High",     timing:"Evening",                       phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"~60% of population deficient. Threonate for brain; glycinate for sleep/anxiety; malate for energy. Don't use oxide — near-zero absorption." },
+  { id:45,  cluster:"Supplements — Core",        item:"Glycine (3g pre-bed)",                     impact:7, need:"Medium",   timing:"Pre-bed",                       phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Core temperature drop + slow-wave sleep enhancement. Also collagen synthesis precursor. Cheap and well-tolerated." },
+  { id:46,  cluster:"Supplements — Core",        item:"NAC (600mg 1-2x/day)",                    impact:7, need:"High",     timing:"Morning ± evening",             phase:"Now",            tier:"A", status:"🧪", risk:"Low",      note:"Glutathione precursor. Respiratory + liver + antioxidant. Particularly relevant given smoking history. Can take with food." },
+  { id:47,  cluster:"Supplements — Core",        item:"Taurine (1-3g/day)",                       impact:7, need:"Medium",   timing:"Morning or pre-workout",        phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"2023 Science paper: taurine supplementation reversed aging markers in mice. Human trials ongoing. Low risk, potentially high signal." },
+
+  // ─── COGNITIVE SUPPLEMENTS ───
+  { id:48,  cluster:"Supplements — Cognitive",   item:"CDP-Choline / Alpha-GPC",                  impact:7, need:"Medium",   timing:"Morning",                       phase:"Now",            tier:"A", status:"🧪", risk:"Low",      note:"Acetylcholine precursor. CDP-choline also donates cytidine (→ uridine for membrane synthesis). Alpha-GPC has slightly better absorption." },
+  { id:49,  cluster:"Supplements — Cognitive",   item:"L-Theanine (100-200mg)",                   impact:6, need:"Medium",   timing:"With caffeine or standalone",   phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Alpha-wave promoter. Blunts caffeine anxiety without blunting wakefulness. 2:1 theanine:caffeine ratio is well-tested." },
+  { id:50,  cluster:"Supplements — Cognitive",   item:"Rhodiola Rosea (200-400mg)",               impact:6, need:"Medium",   timing:"Morning, cycled (8 weeks on/off)",phase:"Month 1+",     tier:"A", status:"🧪", risk:"Low",      note:"Adaptogen with solid fatigue and stress resilience data. Best for high-load periods. Cycle to prevent receptor desensitisation." },
+  { id:51,  cluster:"Supplements — Cognitive",   item:"Lion's Mane (500-1000mg)",                impact:6, need:"Medium",   timing:"Morning with food",             phase:"Month 1+",       tier:"A", status:"🧪", risk:"None",     note:"NGF (Nerve Growth Factor) stimulation. Neurogenesis signal in animal models. Human cognitive data emerging. Best whole fruiting body extract." },
+  { id:52,  cluster:"Supplements — Cognitive",   item:"Bacopa Monnieri (300mg)",                  impact:5, need:"Low",      timing:"With fat (fat-soluble)",        phase:"Optional",       tier:"A", status:"🧪", risk:"Low",      note:"Memory consolidation, anxiety reduction. Takes 8-12 weeks to show effect. GI sensitivity in some — take with food." },
+  { id:53,  cluster:"Supplements — Cognitive",   item:"Ashwagandha (KSM-66, 300-600mg)",         impact:6, need:"Medium",   timing:"Evening",                       phase:"Now",            tier:"A", status:"🧪", risk:"Low",      note:"Cortisol reduction, testosterone signal, stress resilience. KSM-66 is the most studied extract. Cycle — don't take indefinitely." },
+
+  // ─── LONGEVITY FRONTIER SUPPLEMENTS ───
+  { id:54,  cluster:"Supplements — Longevity Frontier", item:"NAD+ Precursors (NMN/NR)",         impact:6, need:"Low",      timing:"Morning",                       phase:"Month 3+",       tier:"A", status:"🧪", risk:"Low",      note:"NAD+ declines with age; precursor supplementation raises tissue levels. NMN vs NR debate ongoing. David Sinclair uses NMN 1g/day. Human outcome data still thin." },
+  { id:55,  cluster:"Supplements — Longevity Frontier", item:"Spermidine (1-2mg/day)",           impact:5, need:"Low",      timing:"With food",                     phase:"Optional",       tier:"A", status:"🧪", risk:"None",     note:"Autophagy inducer. Found naturally in wheat germ, aged cheese. Supplement form emerging. Longevity signal in observational data." },
+  { id:56,  cluster:"Supplements — Longevity Frontier", item:"Fisetin / Quercetin (senolytics)",  impact:6, need:"Low",      timing:"Pulsed dosing (e.g. 2d/month)",  phase:"Experimental",  tier:"B", status:"⚠️", risk:"Low-Med",  note:"Senolytic — clears senescent ('zombie') cells. Fisetin has best bioavailability. Pulsed high-dose protocol rather than daily. Human data very early." },
+  { id:57,  cluster:"Supplements — Longevity Frontier", item:"Rapamycin (mTOR inhibitor)",       impact:7, need:"Low",      timing:"Weekly low-dose, physician supervised",phase:"Experimental", tier:"B", status:"⚠️", risk:"Med",   note:"Most robust longevity data in mammals of any compound. Immune suppression at clinical doses but not at low pulsed doses. Requires physician. Watch this space." },
+  { id:58,  cluster:"Supplements — Longevity Frontier", item:"Metformin (750-1500mg/day)",       impact:6, need:"Low",      timing:"With meals",                    phase:"Experimental",   tier:"B", status:"⚠️", risk:"Low-Med",  note:"AMPK activator, insulin sensitizer. TAME trial ongoing. Caution: may blunt exercise-induced adaptations if taken post-workout. Physician required." },
+  { id:59,  cluster:"Supplements — Longevity Frontier", item:"Acarbose (alpha-glucosidase inhibitor)",impact:5,need:"Low",  timing:"With meals",                    phase:"Experimental",   tier:"B", status:"⚠️", risk:"Low-Med",  note:"Slows carbohydrate absorption → flattens post-meal glucose. ITP data (longevity mouse study) was compelling. GI side effects are common initially." },
+
+  // ─── STRUCTURAL / INJURY ───
+  { id:60,  cluster:"Structural & Injury",       item:"Knee Prehab Daily (TKE + VMO)",            impact:10,need:"Critical",  timing:"Daily, 5-10min",                phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Gatekeeper for entire training stack. Terminal knee extensions and VMO isolation daily. Controlled eccentric loading 3x/week." },
+  { id:61,  cluster:"Structural & Injury",       item:"PT-Guided Strength Imbalance Correction",  impact:8, need:"High",     timing:"Weekly PT + daily home work",   phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Asymmetry is injury's best friend. Unilateral assessment (single-leg movements) reveals what bilateral testing masks." },
+  { id:62,  cluster:"Structural & Injury",       item:"Soft Tissue Therapy / Deep Massage",       impact:6, need:"Medium",   timing:"Weekly or fortnightly",         phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Manual therapy for adhesions, trigger points, scar tissue. Most effective when combined with movement — not passive." },
+  { id:63,  cluster:"Structural & Injury",       item:"HBOT (blocks of 10-20 sessions)",          impact:7, need:"Medium",   timing:"Concentrated blocks",           phase:"Month 1-2",      tier:"A", status:"🧪", risk:"Low",      note:"Angiogenesis, mitochondrial upregulation, anti-inflammatory. Best ROI as periodic intensive blocks around injury/inflammatory phases." },
+  { id:64,  cluster:"Structural & Injury",       item:"Collagen Peptides + Vit C pre-workout",   impact:6, need:"Medium",   timing:"30-60min pre-session",          phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Connective tissue synthesis window is real and acute. 15g collagen + 50mg Vit C 30-60min before loading targets knee ligament/cartilage." },
+  { id:65,  cluster:"Structural & Injury",       item:"Joint Mobility Loading Routines",          impact:7, need:"High",     timing:"Daily, 5-10min",                phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Not passive stretching — loaded range of motion. CARs (Controlled Articular Rotations) for hip and shoulder. FRC methodology." },
+  { id:66,  cluster:"Structural & Injury",       item:"Red / Near-Infrared Light (knee + body)",  impact:6, need:"Medium",   timing:"10-20min daily",                phase:"Month 1+",       tier:"A", status:"🧪", risk:"None",     note:"Photobiomodulation: cytochrome c oxidase activation increases cellular ATP. Best evidence for musculoskeletal pain and wound healing." },
+
+  // ─── NERVOUS SYSTEM REGULATION ───
+  { id:67,  cluster:"Nervous System Regulation", item:"Slow Exhale Breathwork (4-7-8 / box)",     impact:8, need:"High",     timing:"Daily 5min; acute use as needed",phase:"Now",           tier:"S", status:"✅", risk:"None",     note:"Lengthened exhale increases vagal tone immediately. Most underused high-ROI intervention in the stack. Measurable HRV change within 2 minutes." },
+  { id:68,  cluster:"Nervous System Regulation", item:"HRV Biofeedback (resonance frequency)",    impact:7, need:"Medium",   timing:"10-15min daily sessions",       phase:"Month 1+",       tier:"A", status:"🧪", risk:"None",     note:"Train autonomic flexibility by breathing at your resonance frequency (~5.5 breaths/min). HeartMath or Elite HRV + chest strap." },
+  { id:69,  cluster:"Nervous System Regulation", item:"External Auricular VNS (Truvaga/Gammacore)",impact:7,need:"Medium",  timing:"Daily, 15-30min",               phase:"Month 2+",       tier:"A", status:"🧪", risk:"None",     note:"Non-invasive device stimulates vagal branch at ear. Anxiety, inflammation, and HRV data building fast. Worth trialling if breathwork alone insufficient." },
+  { id:70,  cluster:"Nervous System Regulation", item:"Social Co-Regulation (quality connection)", impact:9, need:"Critical", timing:"Weekly minimum",                phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"The most underrated longevity intervention. Isolation rivals smoking as a mortality risk factor. Co-regulation with safe others is irreplaceable." },
+  { id:71,  cluster:"Nervous System Regulation", item:"Nature Exposure (min. 2h/week)",           impact:7, need:"Medium",   timing:"Weekly",                        phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Cortisol reduction, immune function (NK cells), attention restoration. Dose-response appears at ~120 min/week. Not just a nice-to-have." },
+
+  // ─── COGNITIVE ARCHITECTURE ───
+  { id:72,  cluster:"Cognitive Architecture",    item:"Task Batching + Deep Work Blocks",         impact:8, need:"High",     timing:"Daily schedule design",         phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Cognitive switching cost is underestimated — each context switch costs 15-20min of recovery time. Batch similar tasks; protect morning block." },
+  { id:73,  cluster:"Cognitive Architecture",    item:"Decision Fatigue Minimisation",            impact:7, need:"Medium",   timing:"System design (one-time)",      phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Willpower is a depletable resource that correlates with glucose. Default choices, environmental design, and pre-commitment are the tools." },
+  { id:74,  cluster:"Cognitive Architecture",    item:"AI Cognitive Scaffolding",                 impact:7, need:"Medium",   timing:"Integrated into workflow",      phase:"Now",            tier:"A", status:"🧪", risk:"Low",      note:"Externalising planning, synthesis, and recall to AI systems reduces cognitive load and increases consistent execution. The leverage is real if workflows are deliberately designed." },
+  { id:75,  cluster:"Cognitive Architecture",    item:"Environment Design (friction reduction)",  impact:8, need:"High",     timing:"System design (one-time)",      phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Make the right behaviour the path of least resistance. Supplements out on counter. Phone charger outside bedroom. Gym bag packed. Willpower follows environment." },
+  { id:76,  cluster:"Cognitive Architecture",    item:"Therapy + Coaching Integration Loop",      impact:8, need:"High",     timing:"Weekly/fortnightly",            phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Therapy without implementation support and coaching without emotional depth both have limits. The loop between them is more powerful than either alone." },
+
+  // ─── ENVIRONMENTAL ───
+  { id:77,  cluster:"Environment",               item:"Air Quality Control (HEPA + CO₂ monitor)", impact:7, need:"Medium",   timing:"Ambient / background",          phase:"Month 1+",       tier:"A", status:"🧪", risk:"None",     note:"Indoor air is typically 2-5x more polluted than outdoor. CO₂ above 1000ppm measurably impairs cognition. HEPA + regular ventilation." },
+  { id:78,  cluster:"Environment",               item:"Light Spectrum Control (circadian tuning)", impact:7, need:"Medium",   timing:"Ambient / background",          phase:"Month 1+",       tier:"A", status:"🧪", risk:"None",     note:"Warm/amber in evening, bright/cool in daytime. Smart bulbs or Philips Hue are practical. Dramatically cheaper than most supplements." },
+  { id:79,  cluster:"Environment",               item:"Noise Management (NC headphones + quiet sleep)",impact:6,need:"Medium",timing:"Sleep + focus blocks",         phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Ambient noise during sleep fragments architecture even below conscious waking threshold. You already have NC headphones — use them." },
+  { id:80,  cluster:"Environment",               item:"Toxin Minimisation (plastics, VOCs, EMF)", impact:5, need:"Low",      timing:"System design",                 phase:"Optional",       tier:"B", status:"⚠️", risk:"None",     note:"Avoid BPA plastics, non-stick cookware off-gassing, synthetic fragrance. Reasonable hygiene without paranoia. Low effort, non-zero benefit." },
+  { id:81,  cluster:"Environment",               item:"Ergonomic Workspace Design",               impact:6, need:"Medium",   timing:"One-time setup",                phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Chronic low-grade postural load is a hidden source of sympathetic activation and fatigue. Standing desk, monitor height, hip mobility at desk." },
+
+  // ─── SKIN & AESTHETICS ───
+  { id:82,  cluster:"Skin & Aesthetics",         item:"Daily SPF (face + neck, min SPF50)",       impact:9, need:"Critical",  timing:"Every morning",                 phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Single highest-ROI skin longevity intervention. More cumulative impact than everything else combined. Non-negotiable." },
+  { id:83,  cluster:"Skin & Aesthetics",         item:"Tretinoin / Retinoid (Rx preferred)",      impact:8, need:"High",     timing:"Nightly (build up slowly)",     phase:"Now",            tier:"S", status:"✅", risk:"Low",      note:"Only topical with structural evidence for collagen synthesis, cell turnover, pigmentation correction. Start 2-3x/week then daily." },
+  { id:84,  cluster:"Skin & Aesthetics",         item:"Vitamin C Serum (L-ascorbic, 15-20%)",    impact:7, need:"Medium",   timing:"Morning under SPF",             phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Antioxidant + collagen cofactor. Must be L-ascorbic acid in stable formulation. Oxidises quickly — store in fridge." },
+  { id:85,  cluster:"Skin & Aesthetics",         item:"Niacinamide (5-10%)",                      impact:6, need:"Medium",   timing:"Morning or evening",            phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Barrier function, anti-inflammatory, pore appearance, pigmentation. Works synergistically with retinoid protocol." },
+  { id:86,  cluster:"Skin & Aesthetics",         item:"Red/NIR Light Therapy (face + body)",      impact:6, need:"Medium",   timing:"10-20min daily",                phase:"Month 1+",       tier:"A", status:"🧪", risk:"None",     note:"Photobiomodulation for skin collagen, wound healing, and anti-inflammatory. Dual use with knee recovery." },
+
+  // ─── FRONTIER / SPECULATIVE ───
+  { id:87,  cluster:"Frontier Interventions",    item:"Peptide Therapies (BPC-157, TB-500)",      impact:7, need:"Low",      timing:"Injury-phase protocol",         phase:"Experimental",   tier:"B", status:"⚠️", risk:"Med",      note:"BPC-157 has compelling tendon/gut healing data in animal models. Human data scarce but practitioner use growing. Unregulated — source quality critical." },
+  { id:88,  cluster:"Frontier Interventions",    item:"Stem Cell Therapies (MSC, PRP)",           impact:6, need:"Low",      timing:"Clinic, injury specific",       phase:"Experimental",   tier:"B", status:"⚠️", risk:"Med",      note:"PRP has modest evidence for tendon/joint repair. MSC therapies are more speculative. Heavily dependent on clinic quality and protocol. Watch 5-year data." },
+  { id:89,  cluster:"Frontier Interventions",    item:"Plasma Exchange / Young Plasma",           impact:4, need:"Low",      timing:"Experimental clinics only",     phase:"Speculative",    tier:"C", status:"⚠️", risk:"High",     note:"Parabiosis effects in mice are real; human translation unclear. Clinical trials ongoing. Very early, significant risk of unregulated harm. Not yet actionable." },
+  { id:90,  cluster:"Frontier Interventions",    item:"Microbiome Transplantation (FMT)",         impact:6, need:"Low",      timing:"Clinic, condition-specific",    phase:"Experimental",   tier:"B", status:"⚠️", risk:"Med",      note:"FDA-approved for C. diff — beyond that is speculative but active research area. Gut-brain axis and metabolic implications are real." },
+  { id:91,  cluster:"Frontier Interventions",    item:"Gene Therapies (personalised)",            impact:8, need:"Low",      timing:"5-10 year horizon",             phase:"Speculative",    tier:"C", status:"⚠️", risk:"High",     note:"The future of longevity medicine but not yet consumer-accessible safely. Watch Rejuvenate Bio, BioAge, Altos Labs. Monitor, don't act." },
+  { id:92,  cluster:"Frontier Interventions",    item:"Rapamycin (weekly low-dose protocol)",     impact:7, need:"Low",      timing:"Weekly, physician supervised",  phase:"Experimental",   tier:"B", status:"⚠️", risk:"Med",      note:"Most robust longevity data of any single compound in mammals. Dog Aging Project running. Physician required. Watch PEARL trial 2025 human data." },
+
+  // ─── TRACKING ───
+  { id:93,  cluster:"Tracking & Feedback",       item:"HRV Morning Baseline (daily)",             impact:8, need:"High",     timing:"On waking, before coffee",      phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Best proxy for nervous system recovery state. Tells you when to push vs recover. Whoop, Garmin, or Polar strap + Elite HRV app." },
+  { id:94,  cluster:"Tracking & Feedback",       item:"Bloodwork Panel (comprehensive quarterly)", impact:9, need:"High",     timing:"Quarterly",                     phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"ApoB, hs-CRP, HbA1c, fasting insulin, 25-OH-D3, ferritin, homocysteine, testosterone, TSH. You cannot optimise what you don't measure." },
+  { id:95,  cluster:"Tracking & Feedback",       item:"CGM (2-4 week cycles, periodic)",          impact:7, need:"Medium",   timing:"Targeted cycles",               phase:"Month 1+",       tier:"A", status:"🧪", risk:"None",     note:"Single most educational dietary feedback tool. Reveals personal glucose responses. Levels or Supersapiens for consumer access." },
+  { id:96,  cluster:"Tracking & Feedback",       item:"VO₂ Max Test (periodic)",                  impact:7, need:"Medium",   timing:"Every 3-6 months",              phase:"Month 1+",       tier:"S", status:"✅", risk:"None",     note:"Best single objective longevity marker. Lab CPET or estimated via smartwatch. 75th percentile for age is the target for longevity benefit." },
+  { id:97,  cluster:"Tracking & Feedback",       item:"DEXA Scan (body composition annual)",      impact:6, need:"Medium",   timing:"Annually",                      phase:"Month 3+",       tier:"S", status:"✅", risk:"None",     note:"Gold standard body composition — muscle mass, visceral fat, bone density. A $50-100 scan gives data no scale or wearable can." },
+  { id:98,  cluster:"Tracking & Feedback",       item:"Grip + Leg Strength Testing",              impact:7, need:"Medium",   timing:"Quarterly",                     phase:"Now",            tier:"S", status:"✅", risk:"None",     note:"Grip strength and chair-rise test are independent longevity predictors even after controlling for other variables. Cheap, fast, highly informative." },
+  { id:99,  cluster:"Tracking & Feedback",       item:"Weekly Subjective Score (mood/energy/pain)",impact:6,need:"Medium",   timing:"Weekly",                        phase:"Now",            tier:"A", status:"🧪", risk:"None",     note:"Self-report is valid data when tracked consistently. 1-10 across 3 domains reveals which interventions are actually moving the needle." },
+];
+
+const ALL_CLUSTERS = [...new Set(STACK.map(s => s.cluster))];
+const CLUSTERS_WITH_ALL = ["All", ...ALL_CLUSTERS];
+
+const TIER_META = {
+  S: { label: "Established", color: "#34d399", bg: "#34d39918", border: "#34d39940" },
+  A: { label: "Promising",   color: "#60a5fa", bg: "#60a5fa18", border: "#60a5fa40" },
+  B: { label: "Early/Mixed", color: "#f59e0b", bg: "#f59e0b18", border: "#f59e0b40" },
+  C: { label: "Speculative", color: "#f87171", bg: "#f87171188", border: "#f8717140" },
+};
+
+const NEED_META = {
+  Critical: { text: "#ff6b6b", bg: "#ff3b3b20", border: "#ff3b3b50" },
+  High:     { text: "#ffaa44", bg: "#ff8c0018", border: "#ff8c0040" },
+  Medium:   { text: "#44ccff", bg: "#00c2ff18", border: "#00c2ff40" },
+  Low:      { text: "#888",    bg: "#ffffff10", border: "#ffffff20" },
+};
+
+const CLUSTER_COLORS = {
+  "Brain Stimulation":              "#e879f9",
+  "Pharma Neuroplasticity":         "#f472b6",
+  "Behavioral Plasticity":          "#c084fc",
+  "Exercise & Movement":            "#34d399",
+  "Heat & Cold Hormesis":           "#fb923c",
+  "Metabolic Regulation":           "#facc15",
+  "Sleep":                          "#818cf8",
+  "Supplements — Core":             "#60a5fa",
+  "Supplements — Cognitive":        "#67e8f9",
+  "Supplements — Longevity Frontier":"#a78bfa",
+  "Structural & Injury":            "#4ade80",
+  "Nervous System Regulation":      "#f0abfc",
+  "Cognitive Architecture":         "#fbbf24",
+  "Environment":                    "#6ee7b7",
+  "Skin & Aesthetics":              "#fda4af",
+  "Frontier Interventions":         "#f87171",
+  "Tracking & Feedback":            "#2dd4bf",
+};
+
+function ImpactBar({ score }) {
+  const c = score >= 9 ? "#ff6b6b" : score >= 7 ? "#ffaa44" : score >= 5 ? "#60a5fa" : "#555";
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+      <div style={{ flex:1, height:5, background:"#ffffff10", borderRadius:3, overflow:"hidden" }}>
+        <div style={{ width:`${score*10}%`, height:"100%", background:c, borderRadius:3 }} />
+      </div>
+      <span style={{ fontSize:12, fontWeight:700, color:c, minWidth:16, textAlign:"right" }}>{score}</span>
+    </div>
+  );
+}
+
+function Badge({ text, color, bg, border }) {
+  return (
+    <span style={{
+      fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:3,
+      border:`1px solid ${border}`, background:bg, color,
+      letterSpacing:"0.07em", textTransform:"uppercase", whiteSpace:"nowrap"
+    }}>{text}</span>
+  );
+}
+
+function App() {
+  const [clusterF, setClusterF] = useState("All");
+  const [needF,    setNeedF]    = useState("All");
+  const [tierF,    setTierF]    = useState("All");
+  const [search,   setSearch]   = useState("");
+  const [sortKey,  setSortKey]  = useState("impact");
+  const [sortDir,  setSortDir]  = useState("desc");
+  const [expanded, setExpanded] = useState(null);
+  const [view,     setView]     = useState("table"); // table | matrix | sequence
+
+  const filtered = useMemo(() => {
+    let d = [...STACK];
+    if (clusterF !== "All") d = d.filter(x => x.cluster === clusterF);
+    if (needF    !== "All") d = d.filter(x => x.need    === needF);
+    if (tierF    !== "All") d = d.filter(x => x.tier    === tierF);
+    if (search)             d = d.filter(x =>
+      x.item.toLowerCase().includes(search.toLowerCase()) ||
+      x.cluster.toLowerCase().includes(search.toLowerCase()) ||
+      x.note.toLowerCase().includes(search.toLowerCase())
+    );
+    d.sort((a,b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if (typeof av==="string") av = av.toLowerCase();
+      if (typeof bv==="string") bv = bv.toLowerCase();
+      if (av < bv) return sortDir==="asc" ? -1 : 1;
+      if (av > bv) return sortDir==="asc" ?  1 :-1;
+      return 0;
+    });
+    return d;
+  }, [clusterF, needF, tierF, search, sortKey, sortDir]);
+
+  function toggleSort(k) {
+    if (sortKey===k) setSortDir(d => d==="asc"?"desc":"asc");
+    else { setSortKey(k); setSortDir("desc"); }
+  }
+
+  const SortBtn = ({k,label}) => (
+    <button onClick={()=>toggleSort(k)} style={{
+      background:"none", border:"none", color: sortKey===k?"#a78bfa":"#555",
+      cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:700,
+      letterSpacing:"0.1em", textTransform:"uppercase", padding:0,
+      display:"flex", alignItems:"center", gap:3
+    }}>
+      {label}{sortKey===k?(sortDir==="desc"?" ↓":" ↑"):" ↕"}
+    </button>
+  );
+
+  const stats = {
+    total: STACK.length,
+    critical: STACK.filter(s=>s.need==="Critical").length,
+    nowStart: STACK.filter(s=>s.phase==="Now").length,
+    established: STACK.filter(s=>s.tier==="S").length,
+  };
+
+  // Matrix view: Impact (y) vs Evidence tier (x)
+  const MatrixView = () => {
+    const tiers = ["S","A","B","C"];
+    const impactBands = [[9,10],[7,8],[5,6],[1,4]];
+    const bandLabels = ["9-10 Critical","7-8 High","5-6 Moderate","1-4 Low"];
+    return (
+      <div style={{ padding:"0 48px 48px", overflowX:"auto" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"120px repeat(4,1fr)", gap:2, minWidth:700 }}>
+          <div style={{ padding:"12px 0", fontSize:10, color:"#444" }}>IMPACT ↓ / EVIDENCE →</div>
+          {tiers.map(t => {
+            const tm = TIER_META[t];
+            return <div key={t} style={{ padding:"12px 8px", textAlign:"center", fontSize:10, color:tm.color, fontWeight:700, letterSpacing:"0.1em", background:tm.bg, borderRadius:"6px 6px 0 0" }}>
+              {t} · {tm.label}
+            </div>;
+          })}
+          {impactBands.map(([lo,hi],bi) => (
+            <React.Fragment key={bi}>
+              <div style={{ padding:"10px 0", fontSize:10, color:"#555", fontWeight:700, display:"flex", alignItems:"flex-start", paddingTop:16 }}>{bandLabels[bi]}</div>
+              {tiers.map(t => {
+                const cells = filtered.filter(x => x.tier===t && x.impact>=lo && x.impact<=hi);
+                return (
+                  <div key={t} style={{ background:"#ffffff05", border:"1px solid #ffffff08", padding:"10px", minHeight:80, borderRadius:4 }}>
+                    {cells.map(c => (
+                      <div key={c.id} style={{
+                        fontSize:10, color: CLUSTER_COLORS[c.cluster]||"#888",
+                        marginBottom:4, lineHeight:1.3,
+                        borderLeft:`2px solid ${CLUSTER_COLORS[c.cluster]||"#555"}`,
+                        paddingLeft:5, cursor:"pointer"
+                      }} onClick={()=>{ setExpanded(c.id===expanded?null:c.id); setView("table"); }}>
+                        {c.item}
+                      </div>
+                    ))}
+                    {cells.length===0 && <div style={{ fontSize:10, color:"#2a2a3a" }}>—</div>}
+                  </div>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const SequenceView = () => {
+    const stages = [
+      { phase:"Week 1-2", color:"#ff6b6b", items: STACK.filter(s=>s.phase==="Now"&&s.impact>=9).map(s=>s.item) },
+      { phase:"Month 1",  color:"#ffaa44", items: STACK.filter(s=>s.phase==="Now"&&s.impact<=8&&s.impact>=7).map(s=>s.item) },
+      { phase:"Month 1-2",color:"#facc15", items: STACK.filter(s=>s.phase==="Month 1-2").map(s=>s.item) },
+      { phase:"Month 2+", color:"#60a5fa", items: STACK.filter(s=>["Month 1+","Month 2+","Month 2-3"].includes(s.phase)).map(s=>s.item) },
+      { phase:"Month 3+", color:"#a78bfa", items: STACK.filter(s=>["Month 3+","Month 3-4"].includes(s.phase)).map(s=>s.item) },
+      { phase:"Month 4+", color:"#34d399", items: STACK.filter(s=>s.phase==="Month 4+").map(s=>s.item) },
+      { phase:"Experimental (monitor)", color:"#f87171", items: STACK.filter(s=>["Experimental","Speculative","Optional"].includes(s.phase)).map(s=>s.item) },
+    ];
+    return (
+      <div style={{ padding:"0 48px 48px", display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:8 }}>
+        {stages.map(st => (
+          <div key={st.phase} style={{
+            background:"#ffffff05", border:`1px solid ${st.color}22`,
+            borderTop:`3px solid ${st.color}`, borderRadius:"0 0 8px 8px", padding:"16px 14px"
+          }}>
+            <div style={{ fontSize:11, fontWeight:700, color:st.color, letterSpacing:"0.07em", marginBottom:12 }}>{st.phase}</div>
+            {st.items.slice(0,12).map(it=>(
+              <div key={it} style={{ fontSize:10, color:"#555", marginBottom:5, lineHeight:1.4 }}>
+                <span style={{ color:st.color, marginRight:5 }}>·</span>{it}
+              </div>
+            ))}
+            {st.items.length>12 && <div style={{ fontSize:10, color:"#333", marginTop:4 }}>+{st.items.length-12} more</div>}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ background:"#08080f", minHeight:"100vh", fontFamily:"'DM Mono','Fira Code',monospace", color:"#e2e8f0", paddingBottom:80 }}>
+
+      {/* HEADER */}
+      <div style={{ padding:"44px 48px 28px", borderBottom:"1px solid #ffffff0a", background:"linear-gradient(180deg,#0d0d1a 0%,#08080f 100%)" }}>
+        <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", flexWrap:"wrap", gap:20 }}>
+          <div>
+            <div style={{ fontSize:10, letterSpacing:"0.22em", color:"#a78bfa", textTransform:"uppercase", marginBottom:8 }}>Full Spectrum Health Protocol — Expanded</div>
+            <h1 style={{
+              fontFamily:"'Syne',sans-serif", fontSize:"clamp(26px,5vw,44px)",
+              fontWeight:800, letterSpacing:"-0.025em",
+              background:"linear-gradient(135deg,#e2e8f0 0%,#a78bfa 60%,#f472b6 100%)",
+              WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"
+            }}>Future Stack Grid</h1>
+            <div style={{ fontSize:12, color:"#334155", marginTop:5 }}>99 interventions · 17 clusters · ranked by impact, evidence & phase</div>
+          </div>
+          <div style={{ display:"flex", gap:20, flexWrap:"wrap" }}>
+            {[
+              { l:"Total",       v:stats.total,       c:"#e2e8f0" },
+              { l:"Critical",    v:stats.critical,    c:"#ff6b6b" },
+              { l:"Start Now",   v:stats.nowStart,    c:"#34d399" },
+              { l:"Established", v:stats.established, c:"#60a5fa" },
+            ].map(s=>(
+              <div key={s.l} style={{ textAlign:"right" }}>
+                <div style={{ fontSize:28, fontWeight:500, fontFamily:"'Syne',sans-serif", color:s.c }}>{s.v}</div>
+                <div style={{ fontSize:9, color:"#334155", letterSpacing:"0.1em", textTransform:"uppercase" }}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* VIEW TABS */}
+      <div style={{ padding:"16px 48px", borderBottom:"1px solid #ffffff0a", display:"flex", gap:6 }}>
+        {[["table","Table View"],["matrix","Impact × Evidence Matrix"],["sequence","Sequencing Ladder"]].map(([v,l])=>(
+          <button key={v} className="tab-btn" onClick={()=>setView(v)} style={{
+            padding:"6px 14px", borderRadius:6,
+            background: view===v ? "#a78bfa22" : "transparent",
+            border: `1px solid ${view===v?"#a78bfa55":"#ffffff0f"}`,
+            color: view===v ? "#c4b5fd" : "#555",
+            fontFamily:"inherit", fontSize:11, fontWeight:view===v?700:400,
+            letterSpacing:"0.04em"
+          }}>{l}</button>
+        ))}
+      </div>
+
+      {/* FILTERS */}
+      <div style={{ padding:"16px 48px", borderBottom:"1px solid #ffffff0a", display:"flex", flexWrap:"wrap", gap:12, alignItems:"center" }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..."
+          style={{ background:"#ffffff08", border:"1px solid #ffffff14", borderRadius:7,
+            padding:"7px 13px", color:"#e2e8f0", fontFamily:"inherit", fontSize:12, width:200 }} />
+
+        <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+          {Object.entries(TIER_META).map(([k,tm])=>{
+            const active = tierF===k;
+            return <button key={k} className="fpill" onClick={()=>setTierF(active?"All":k)} style={{
+              padding:"3px 10px", borderRadius:20,
+              border:`1px solid ${active?tm.border:"#ffffff12"}`,
+              background:active?tm.bg:"transparent",
+              color:active?tm.color:"#555",
+              fontFamily:"inherit", fontSize:10, fontWeight:700, letterSpacing:"0.07em",
+              textTransform:"uppercase"
+            }}>{k} · {tm.label}</button>;
+          })}
+        </div>
+
+        <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+          {["Critical","High","Medium","Low"].map(n=>{
+            const nm=NEED_META[n]; const active=needF===n;
+            return <button key={n} className="fpill" onClick={()=>setNeedF(active?"All":n)} style={{
+              padding:"3px 10px", borderRadius:20,
+              border:`1px solid ${active?nm.border:"#ffffff12"}`,
+              background:active?nm.bg:"transparent",
+              color:active?nm.text:"#555",
+              fontFamily:"inherit", fontSize:10, fontWeight:700, letterSpacing:"0.07em", textTransform:"uppercase"
+            }}>{n}</button>;
+          })}
+        </div>
+      </div>
+
+      {/* CLUSTER FILTER */}
+      <div style={{ padding:"12px 48px", borderBottom:"1px solid #ffffff0a", display:"flex", gap:6, flexWrap:"wrap" }}>
+        {CLUSTERS_WITH_ALL.map(c=>{
+          const color=CLUSTER_COLORS[c]||"#888"; const active=clusterF===c;
+          return <button key={c} className="fpill" onClick={()=>setClusterF(c)} style={{
+            padding:"3px 11px", borderRadius:20,
+            border:`1px solid ${active?color+"88":"#ffffff0a"}`,
+            background:active?color+"1a":"transparent",
+            color:active?color:"#444",
+            fontFamily:"inherit", fontSize:10, fontWeight:500,
+            display:"flex", alignItems:"center", gap:5
+          }}>
+            {c!=="All"&&<span style={{ width:5,height:5,borderRadius:"50%",background:color,display:"inline-block" }}/>}
+            {c}
+          </button>;
+        })}
+      </div>
+
+      <div style={{ padding:"10px 48px 0", fontSize:10, color:"#2a2a3a", letterSpacing:"0.1em" }}>
+        {filtered.length} / {STACK.length} INTERVENTIONS
+      </div>
+
+      {/* VIEWS */}
+      {view==="matrix"   && <MatrixView />}
+      {view==="sequence" && <SequenceView />}
+
+      {view==="table" && (
+        <div style={{ padding:"14px 48px 0", overflowX:"auto" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", minWidth:900 }}>
+            <thead>
+              <tr style={{ borderBottom:"1px solid #ffffff10" }}>
+                {[
+                  {k:"cluster",  l:"Cluster",      w:"14%"},
+                  {k:"item",     l:"Intervention", w:"22%"},
+                  {k:"impact",   l:"Impact",       w:"11%"},
+                  {k:"tier",     l:"Evidence",     w:"10%"},
+                  {k:"need",     l:"Need",         w:"9%"},
+                  {k:"timing",   l:"Timing",       w:"13%"},
+                  {k:"phase",    l:"Phase",        w:"10%"},
+                  {k:"risk",     l:"Risk",         w:"7%"},
+                ].map(col=>(
+                  <th key={col.k} style={{ textAlign:"left", padding:"8px 10px", width:col.w }}>
+                    <SortBtn k={col.k} label={col.l} />
+                  </th>
+                ))}
+                <th style={{ width:"4%", padding:"8px 10px" }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(row=>{
+                const cc  = CLUSTER_COLORS[row.cluster]||"#888";
+                const nm  = NEED_META[row.need]||{};
+                const tm  = TIER_META[row.tier]||{};
+                const isE = expanded===row.id;
+                return (
+                  <React.Fragment key={row.id}>
+                    <tr className="row-hover" style={{ borderBottom:"1px solid #ffffff07" }}
+                      onClick={()=>setExpanded(isE?null:row.id)}>
+                      <td style={{ padding:"11px 10px" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                          <span style={{ width:6,height:6,borderRadius:"50%",background:cc,display:"inline-block",flexShrink:0 }}/>
+                          <span style={{ fontSize:10, color:cc, lineHeight:1.3 }}>{row.cluster}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding:"11px 10px" }}>
+                        <span style={{ fontSize:12, fontWeight:500, color:"#e2e8f0" }}>{row.item}</span>
+                        <span style={{ marginLeft:6, fontSize:11 }}>{row.status}</span>
+                      </td>
+                      <td style={{ padding:"11px 10px", minWidth:100 }}>
+                        <ImpactBar score={row.impact} />
+                      </td>
+                      <td style={{ padding:"11px 10px" }}>
+                        <Badge text={`${row.tier} · ${tm.label}`} color={tm.color} bg={tm.bg} border={tm.border} />
+                      </td>
+                      <td style={{ padding:"11px 10px" }}>
+                        <Badge text={row.need} color={nm.text} bg={nm.bg} border={nm.border} />
+                      </td>
+                      <td style={{ padding:"11px 10px", fontSize:11, color:"#475569" }}>{row.timing}</td>
+                      <td style={{ padding:"11px 10px" }}>
+                        <span style={{
+                          fontSize:10, padding:"2px 7px", borderRadius:3,
+                          background: row.phase==="Now"?"#34d39918":"#ffffff08",
+                          color: row.phase==="Now"?"#34d399":"#475569",
+                          border:`1px solid ${row.phase==="Now"?"#34d39930":"#ffffff0f"}`,
+                          fontWeight:600, whiteSpace:"nowrap"
+                        }}>{row.phase}</span>
+                      </td>
+                      <td style={{ padding:"11px 10px" }}>
+                        <span style={{
+                          fontSize:10,
+                          color: row.risk==="None"?"#334155":row.risk.includes("High")?"#f87171":row.risk.includes("Med")?"#f59e0b":"#64748b"
+                        }}>{row.risk}</span>
+                      </td>
+                      <td style={{ padding:"11px 10px", textAlign:"right" }}>
+                        <span style={{ fontSize:9, color: isE?"#a78bfa":"#2a2a3a" }}>{isE?"▲":"▼"}</span>
+                      </td>
+                    </tr>
+                    {isE&&(
+                      <tr style={{ background:"#ffffff04" }}>
+                        <td colSpan={9} style={{ padding:"10px 10px 14px 46px", fontSize:11, color:"#64748b", lineHeight:1.8, borderBottom:"1px solid #ffffff07" }}>
+                          <span style={{ color:"#a78bfa", marginRight:8 }}>→</span>{row.note}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* CLUSTER CARDS */}
+      <div style={{ padding:"52px 48px 0" }}>
+        <div style={{ fontSize:10, letterSpacing:"0.15em", color:"#2a2a3a", textTransform:"uppercase", marginBottom:16 }}>Cluster Summary</div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:8 }}>
+          {ALL_CLUSTERS.map(cluster=>{
+            const color = CLUSTER_COLORS[cluster]||"#888";
+            const items = STACK.filter(s=>s.cluster===cluster);
+            const avg   = (items.reduce((a,b)=>a+b.impact,0)/items.length).toFixed(1);
+            const hiN   = items.filter(s=>["Critical","High"].includes(s.need)).length;
+            const active= clusterF===cluster;
+            return (
+              <div key={cluster} onClick={()=>{ setClusterF(active?"All":cluster); setView("table"); }} style={{
+                background:active?color+"18":"#ffffff05",
+                border:`1px solid ${active?color+"55":"#ffffff0a"}`,
+                borderRadius:8, padding:"13px 14px", cursor:"pointer"
+              }}>
+                <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7 }}>
+                  <span style={{ width:7,height:7,borderRadius:"50%",background:color,display:"inline-block" }}/>
+                  <span style={{ fontSize:10, color, fontWeight:600 }}>{cluster}</span>
+                </div>
+                <div style={{ display:"flex", justifyContent:"space-between" }}>
+                  <span style={{ fontSize:10, color:"#334155" }}>{items.length} items</span>
+                  <span style={{ fontSize:10, color:"#334155" }}>avg <span style={{ color:"#94a3b8" }}>{avg}</span></span>
+                  <span style={{ fontSize:10, color:"#f59e0b" }}>{hiN} hi+</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* LEGEND */}
+      <div style={{ padding:"40px 48px 0", display:"flex", gap:32, flexWrap:"wrap" }}>
+        <div>
+          <div style={{ fontSize:10, color:"#2a2a3a", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:10 }}>Evidence Tiers</div>
+          {Object.entries(TIER_META).map(([k,tm])=>(
+            <div key={k} style={{ fontSize:11, color:tm.color, marginBottom:5, display:"flex", gap:8 }}>
+              <span style={{ fontWeight:700, minWidth:14 }}>{k}</span>
+              <span style={{ color:"#334155" }}>—</span>
+              <span>{tm.label}</span>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div style={{ fontSize:10, color:"#2a2a3a", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:10 }}>Status Icons</div>
+          {[["✅","Established / Strong RCT"],["🧪","Promising / Experimental"],["⚠️","Frontier / Caution"]].map(([s,l])=>(
+            <div key={s} style={{ fontSize:11, color:"#475569", marginBottom:5 }}>{s} {l}</div>
+          ))}
+        </div>
+        <div>
+          <div style={{ fontSize:10, color:"#2a2a3a", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:10 }}>Usage Notes</div>
+          <div style={{ fontSize:11, color:"#334155", lineHeight:1.8, maxWidth:400 }}>
+            Click any row to expand clinical rationale.<br/>
+            Use the Matrix view for impact vs evidence positioning.<br/>
+            Use the Sequence view for rollout planning.<br/>
+            Cluster cards filter the table — click to drill in.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
